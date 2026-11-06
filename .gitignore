@@ -1,0 +1,36 @@
+# зависимости
+node_modules/
+
+# Expo / Metro
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+.metro-health-check*
+
+# нативные проекты (генерируются prebuild/EAS)
+/android
+/ios
+
+# сборки и ключи
+*.apk
+*.aab
+*.ipa
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# локальные переменные окружения
+.env
+.env*.local
+
+# прочее
+coverage/
+*.log
+npm-debug.*
+.DS_Store
+*.tsbuildinfo

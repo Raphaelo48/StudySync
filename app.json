@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "StudySync",
+    "slug": "studysync",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "studysync",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#101322"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.studysync.mobile"
+    },
+    "android": {
+      "package": "app.studysync.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#101322",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-sharing",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "StudySync использует галерею, чтобы прикреплять фото к конспектам пар.",
+          "cameraPermission": "StudySync использует камеру, чтобы фотографировать доску и слайды для конспектов."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#7C6CF0"
+        }
+      ]
+    ]
+  }
+}
