@@ -18,7 +18,7 @@ import { computeDayLoad, type DayLoadInfo } from '../../src/logic/analytics';
 import { conflictingIds } from '../../src/logic/conflicts';
 import { toggleTaskDone } from '../../src/logic/taskStatusService';
 import { DebtCard } from '../../src/components/debts/DebtCard';
-import type { DebtWithSubject } from '../../src/models/types';
+import type { DebtWithSubject, HomeBlock } from '../../src/models/types';
 import {
   DAY_MS,
   addDays,
@@ -50,6 +50,7 @@ interface HomeData {
 export default function HomeScreen() {
   const { colors, fontSizes, spacing } = useTheme();
   const { settings } = useSettings();
+  const show = (b: HomeBlock) => !settings.homeHiddenBlocks.includes(b);
   const db = useDatabase();
   const router = useRouter();
   const { version, bump } = useDataVersion();
@@ -216,34 +217,38 @@ export default function HomeScreen() {
             ) : null}
 
             {/* Статистика дня */}
-            <View style={[styles.statRow, { marginTop: spacing.lg }]}>
-              <StatTile
-                testID="home-stat-done"
-                icon="checkmark-done"
-                color={colors.success}
-                value={`${data.doneToday}/${data.todayTasks.length}`}
-                label="задач выполнено сегодня"
-              />
-              <StatTile
-                testID="home-stat-focus"
-                icon="timer-outline"
-                color={colors.primary}
-                value={formatDurationMinutes(data.focusMinutesToday)}
-                label={dailyGoal > 0 ? `цель ${formatDurationMinutes(dailyGoal)}${goalReached ? ' · достигнута' : ''}` : 'фокус сегодня'}
-              />
-              <StatTile
-                testID="home-stat-planned"
-                icon="albums-outline"
-                color={colors.info}
-                value={formatDurationMinutes(data.plannedMinutesToday)}
-                label="запланировано на сегодня"
-              />
-            </View>
+            {show('stats') ? (
+              <View style={[styles.statRow, { marginTop: spacing.lg }]}>
+                <StatTile
+                  testID="home-stat-done"
+                  icon="checkmark-done"
+                  color={colors.success}
+                  value={`${data.doneToday}/${data.todayTasks.length}`}
+                  label="задач выполнено сегодня"
+                />
+                <StatTile
+                  testID="home-stat-focus"
+                  icon="timer-outline"
+                  color={colors.primary}
+                  value={formatDurationMinutes(data.focusMinutesToday)}
+                  label={dailyGoal > 0 ? `цель ${formatDurationMinutes(dailyGoal)}${goalReached ? ' · достигнута' : ''}` : 'фокус сегодня'}
+                />
+                <StatTile
+                  testID="home-stat-planned"
+                  icon="albums-outline"
+                  color={colors.info}
+                  value={formatDurationMinutes(data.plannedMinutesToday)}
+                  label="запланировано на сегодня"
+                />
+              </View>
+            ) : null}
 
             {/* Загруженность дня */}
-            <Card style={{ marginTop: spacing.md }} testID="home-dayload">
-              <DayLoadBar load={data.dayLoad} onPress={data.dayLoad.level === 'overload' ? () => router.push('/replan') : undefined} />
-            </Card>
+            {show('dayload') ? (
+              <Card style={{ marginTop: show('stats') ? spacing.md : spacing.lg }} testID="home-dayload">
+                <DayLoadBar load={data.dayLoad} onPress={data.dayLoad.level === 'overload' ? () => router.push('/replan') : undefined} />
+              </Card>
+            ) : null}
 
             {/* Просроченные */}
             {data.overdue.length > 0 ? (
@@ -271,7 +276,7 @@ export default function HomeScreen() {
             ) : null}
 
             {/* Ближайшие занятия */}
-            {data.nextEvents.length > 0 ? (
+            {show('lessons') && data.nextEvents.length > 0 ? (
               <>
                 <SectionTitle
                   title="Ближайшие занятия"
@@ -291,7 +296,7 @@ export default function HomeScreen() {
             ) : null}
 
             {/* Долги и отработки: ближайшие два */}
-            {data.debts.length > 0 ? (
+            {show('debts') && data.debts.length > 0 ? (
               <>
                 <SectionTitle
                   title={`Долги · ${data.debts.length}`}
@@ -344,7 +349,7 @@ export default function HomeScreen() {
             )}
 
             {/* Высокий приоритет */}
-            {data.highPriority.length > 0 ? (
+            {show('priority') && data.highPriority.length > 0 ? (
               <>
                 <SectionTitle title="Высокий приоритет" />
                 {data.highPriority.map((t) => (
@@ -362,7 +367,7 @@ export default function HomeScreen() {
             ) : null}
 
             {/* Ближайшие дедлайны */}
-            {data.upcomingDeadlines.length > 0 ? (
+            {show('deadlines') && data.upcomingDeadlines.length > 0 ? (
               <>
                 <SectionTitle title="Ближайшие дедлайны" />
                 <Card>

@@ -185,6 +185,12 @@ export default function ScheduleScreen() {
             onPress={() => setSelectedDay(startOfDay(Date.now()))}
             testID="schedule-today"
           />
+          <IconButton
+            icon="search"
+            accessibilityLabel="Поиск расписания: группа, преподаватель, аудитория, предмет"
+            onPress={() => router.push('/schedule-search')}
+            testID="schedule-search"
+          />
           <IconButton icon="add" accessibilityLabel="Добавить событие" onPress={() => openCreate()} testID="schedule-add" />
         </View>
 
@@ -233,6 +239,7 @@ export default function ScheduleScreen() {
                   onPress={() => setSheetEvent(e)}
                   hasNote={noteKeys.has(lessonKeyFor(e))}
                   onNotePress={canHaveNote(e) ? () => openNote(e) : undefined}
+                  compact={settings.compactSchedule}
                   testID={`schedule-event-${e.id}`}
                 />
               ))}
@@ -321,6 +328,7 @@ export default function ScheduleScreen() {
                   onPress={() => setSheetEvent(e)}
                   hasNote={noteKeys.has(lessonKeyFor(e))}
                   onNotePress={canHaveNote(e) ? () => openNote(e) : undefined}
+                  compact={settings.compactSchedule}
                   testID={`schedule-month-event-${e.id}`}
                 />
               ))

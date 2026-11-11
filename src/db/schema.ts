@@ -13,7 +13,7 @@
  */
 import type { SqlDriver } from './driver';
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export interface Migration {
   version: number;
@@ -265,7 +265,15 @@ const V5: Migration = {
   ],
 };
 
-export const MIGRATIONS: Migration[] = [V1, V2, V3, V4, V5];
+/**
+ * v6: персонализация и данные расписания КГЭУ одним JSON-полем (см. logic/prefs).
+ */
+const V6: Migration = {
+  version: 6,
+  statements: [`ALTER TABLE user_settings ADD COLUMN prefs_json TEXT NOT NULL DEFAULT '{}'`],
+};
+
+export const MIGRATIONS: Migration[] = [V1, V2, V3, V4, V5, V6];
 
 /**
  * Применить все неприменённые миграции в транзакции.

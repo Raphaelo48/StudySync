@@ -2,7 +2,8 @@
  * Корневой layout: провайдеры (БД → настройки → тема → данные → тосты → таймер),
  * стек навигации, статус-бар и хост тостов.
  */
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -16,7 +17,10 @@ import {
   useResolvedColorScheme,
   useSettings,
   useTheme,
+  useToast,
 } from '../src/state/AppContexts';
+import { runAutoSync } from '../src/logic/kgeuAutoSync';
+import { pluralRu } from '../src/core/time';
 import { TimerProvider } from '../src/state/TimerContext';
 import { ToastHost } from '../src/components/ui/overlays';
 import { getNotificationClient } from '../src/notifications/client';
@@ -57,6 +61,51 @@ function NotificationsSyncBridge() {
   return null;
 }
 
+/**
+ * Автообновление расписания своей группы: при запуске и при возвращении из фона
+ * (не чаще раза в 6 часов, только если включено в настройках). Ошибки сети
+ * не показываются — расписание просто останется прежним до следующей попытки.
+ */
+function KgeuAutoSyncBridge() {
+  const db = useDatabase();
+  const { ready, reload } = useSettings();
+  const { bump } = useDataVersion();
+  const toast = useToast();
+  const running = useRef(false);
+
+  useEffect(() => {
+    if (!ready) return;
+    const attempt = async () => {
+      if (running.current) return;
+      running.current = true;
+      try {
+        const res = await runAutoSync(db);
+        if (res.status === 'synced') {
+          await reload();
+          if (res.changes > 0) {
+            bump();
+            toast.info(
+              `Расписание ${res.groupName} обновлено: ${res.changes} ${pluralRu(res.changes, 'изменение', 'изменения', 'изменений')}`
+            );
+          }
+        }
+      } catch (e) {
+        logger.warn('kgeu', 'Автообновление расписания не удалось', { e });
+      } finally {
+        running.current = false;
+      }
+    };
+    void attempt();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void attempt();
+    });
+    return () => sub.remove();
+    // ready меняется один раз — подписка живёт всё время работы приложения.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db, ready]);
+  return null;
+}
+
 function ThemedStack() {
   const { colors } = useTheme();
   return (
@@ -76,6 +125,9 @@ function ThemedStack() {
       <Stack.Screen name="focus" options={{ animation: 'fade' }} />
       <Stack.Screen name="replan" />
       <Stack.Screen name="university" />
+      <Stack.Screen name="schedule-search" />
+      <Stack.Screen name="schedule-view" />
+      <Stack.Screen name="appearance" />
       <Stack.Screen name="subjects" />
       <Stack.Screen name="subject/edit" options={{ presentation: 'modal' }} />
       <Stack.Screen name="settings" />
@@ -100,6 +152,7 @@ export default function RootLayout() {
                 <TimerProvider>
                   <StatusBarBridge />
                   <NotificationsSyncBridge />
+                  <KgeuAutoSyncBridge />
                   <ThemedStack />
                   <ToastHost />
                 </TimerProvider>

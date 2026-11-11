@@ -6,15 +6,16 @@
  * подтверждение → транзакционное применение. Пользовательские события
  * не затрагиваются; повторный импорт обновляет изменения (идемпотентно).
  */
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../src/components/ui/Screen';
 import { ScreenHeader } from '../src/components/ScreenHeader';
 import { Badge, Button, Card, EmptyState, Spinner } from '../src/components/ui/primitives';
 import { ConfirmDialog } from '../src/components/ui/overlays';
-import { useDataVersion, useDatabase, useTheme, useToast } from '../src/state/AppContexts';
+import { useDataVersion, useDatabase, useSettings, useTheme, useToast } from '../src/state/AppContexts';
+import { SwitchRow } from '../src/components/ui/inputs';
 import { fetchGroups, KgeuError, type KgeuGroup } from '../src/logic/kgeuClient';
 import { computeSyncDiff, parseLessonRow, type ParsedLesson } from '../src/logic/kgeuImport';
 import { importKgeuSchedule, removeKgeuImport, type KgeuImportReport } from '../src/logic/kgeuService';
@@ -26,6 +27,8 @@ export default function UniversityScreen() {
   const db = useDatabase();
   const toast = useToast();
   const { bump } = useDataVersion();
+  const { settings, update } = useSettings();
+  const params = useLocalSearchParams<{ groupId?: string; groupName?: string }>();
 
   const [query, setQuery] = useState('');
   const [allGroups, setAllGroups] = useState<KgeuGroup[] | null>(null);
@@ -51,6 +54,16 @@ export default function UniversityScreen() {
       .filter((g) => g.name.toLowerCase().includes(q) || (g.facul ?? '').toLowerCase().includes(q))
       .slice(0, 60);
   }, [allGroups, query]);
+
+  // Переход из поиска расписания: сразу открыть выбранную группу.
+  useEffect(() => {
+    const id = Number(params.groupId);
+    if (Number.isInteger(id) && id > 0 && params.groupName) {
+      void openGroup({ id, name: params.groupName });
+    }
+    // Только при открытии экрана с параметрами.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.groupId]);
 
   const loadGroups = async () => {
     setLoadingGroups(true);
@@ -99,6 +112,8 @@ export default function UniversityScreen() {
     try {
       const rep = await importKgeuSchedule(db, { groupId: selected.id, groupName: selected.name });
       setReport(rep);
+      // Запоминаем свою группу — для автообновления при запуске и быстрого поиска.
+      await update({ kgeuGroupId: selected.id, kgeuGroupName: selected.name, kgeuLastSyncAt: Date.now() });
       bump();
       toast.success(
         `Расписание ${selected.name}: добавлено ${rep.inserted}, обновлено ${rep.updated}, удалено устаревших ${rep.removed}, предметов создано ${rep.subjectsCreated}`
@@ -117,6 +132,9 @@ export default function UniversityScreen() {
     if (!selected) return;
     const removed = await removeKgeuImport(db, selected.id);
     setConfirmRemove(false);
+    if (settings.kgeuGroupId === selected.id) {
+      await update({ kgeuGroupId: null, kgeuGroupName: null, kgeuLastSyncAt: null });
+    }
     setImportedCount(0);
     setReport(null);
     bump();
@@ -157,6 +175,46 @@ export default function UniversityScreen() {
                 </Text>
               </View>
             </Card>
+
+            {settings.kgeuGroupId != null ? (
+              <Card style={{ marginBottom: spacing.lg }} testID="kgeu-own-group">
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Моя группа ${settings.kgeuGroupName ?? ''}, открыть`}
+                  onPress={() => void openGroup({ id: settings.kgeuGroupId!, name: settings.kgeuGroupName ?? 'Моя группа' })}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                >
+                  <Ionicons name="people-outline" size={20} color={colors.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.text, fontSize: fontSizes.md, fontWeight: '600' }}>
+                      Моя группа: {settings.kgeuGroupName ?? '—'}
+                    </Text>
+                    <Text style={{ color: colors.textMuted, fontSize: fontSizes.sm }}>
+                      {settings.kgeuLastSyncAt
+                        ? `обновлено ${formatDateShort(settings.kgeuLastSyncAt)} в ${formatTime(settings.kgeuLastSyncAt)}`
+                        : 'ещё не обновлялось'}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                </Pressable>
+                <SwitchRow
+                  testID="kgeu-autosync"
+                  label="Обновлять при открытии приложения"
+                  description="Не чаще раза в 6 часов, без уведомлений об ошибках сети"
+                  value={settings.autoSyncGroup}
+                  onValueChange={(v) => void update({ autoSyncGroup: v })}
+                />
+              </Card>
+            ) : null}
+
+            <Button
+              testID="kgeu-open-search"
+              title="Поиск: преподаватель, аудитория, предмет"
+              variant="secondary"
+              icon="search"
+              style={{ marginBottom: spacing.lg }}
+              onPress={() => router.push('/schedule-search')}
+            />
 
             <View
               style={[

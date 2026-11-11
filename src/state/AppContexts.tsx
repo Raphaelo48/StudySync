@@ -139,7 +139,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const mode: ThemeMode = settings.themeMode;
   const resolved: 'light' | 'dark' =
     mode === 'system' ? (systemScheme === 'light' ? 'light' : 'dark') : mode;
-  const theme = useMemo(() => buildTheme(resolved === 'dark'), [resolved]);
+  const theme = useMemo(
+    () => buildTheme(resolved === 'dark', settings.accentColor, settings.fontScale),
+    [resolved, settings.accentColor, settings.fontScale]
+  );
   const value = useMemo(() => ({ theme, resolvedMode: resolved }), [theme, resolved]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

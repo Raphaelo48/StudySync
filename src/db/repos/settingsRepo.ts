@@ -1,6 +1,7 @@
 import { DEFAULT_SETTINGS, type UserSettings } from '../../models/types';
 import type { SqlDriver } from '../driver';
 import { toBool, toInt } from '../mappers';
+import { parsePrefs } from '../../logic/prefs';
 
 interface SettingsRow {
   display_name: string;
@@ -25,6 +26,7 @@ interface SettingsRow {
   onboarding_done: number;
   morning_digest_enabled?: number | null;
   morning_digest_time_min?: number | null;
+  prefs_json?: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -53,6 +55,7 @@ function mapSettings(row: SettingsRow): UserSettings {
     onboardingDone: toBool(row.onboarding_done),
     morningDigestEnabled: row.morning_digest_enabled == null ? true : toBool(row.morning_digest_enabled),
     morningDigestTimeMin: row.morning_digest_time_min ?? DEFAULT_SETTINGS.morningDigestTimeMin,
+    ...parsePrefs(row.prefs_json ?? '{}'),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -92,7 +95,7 @@ export class SettingsRepo {
         default_long_break_min = ?, cycles_before_long_break = ?, daily_goal_min = ?,
         study_window_start_min = ?, study_window_end_min = ?, break_between_tasks_min = ?,
         planning_horizon_days = ?, onboarding_done = ?, morning_digest_enabled = ?,
-        morning_digest_time_min = ?, updated_at = ?
+        morning_digest_time_min = ?, prefs_json = ?, updated_at = ?
        WHERE id = 1`,
       [
         next.displayName, next.themeMode, next.weekStart, toInt(next.notificationsEnabled),
@@ -101,7 +104,7 @@ export class SettingsRepo {
         next.defaultWorkMin, next.defaultBreakMin, next.defaultLongBreakMin, next.cyclesBeforeLongBreak,
         next.dailyGoalMin, next.studyWindowStartMin, next.studyWindowEndMin, next.breakBetweenTasksMin,
         next.planningHorizonDays, toInt(next.onboardingDone), toInt(next.morningDigestEnabled),
-        next.morningDigestTimeMin, next.updatedAt,
+        next.morningDigestTimeMin, JSON.stringify(parsePrefs(next)), next.updatedAt,
       ]
     );
     return next;
@@ -115,8 +118,8 @@ export class SettingsRepo {
         notify_session, notify_break, default_work_min, default_break_min, default_long_break_min,
         cycles_before_long_break, daily_goal_min, study_window_start_min, study_window_end_min,
         break_between_tasks_min, planning_horizon_days, onboarding_done, morning_digest_enabled,
-        morning_digest_time_min, created_at, updated_at)
-       VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        morning_digest_time_min, prefs_json, created_at, updated_at)
+       VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
         display_name = excluded.display_name, theme_mode = excluded.theme_mode, week_start = excluded.week_start,
         notifications_enabled = excluded.notifications_enabled, notify_lesson = excluded.notify_lesson,
@@ -128,7 +131,8 @@ export class SettingsRepo {
         study_window_start_min = excluded.study_window_start_min, study_window_end_min = excluded.study_window_end_min,
         break_between_tasks_min = excluded.break_between_tasks_min, planning_horizon_days = excluded.planning_horizon_days,
         onboarding_done = excluded.onboarding_done, morning_digest_enabled = excluded.morning_digest_enabled,
-        morning_digest_time_min = excluded.morning_digest_time_min, updated_at = excluded.updated_at`,
+        morning_digest_time_min = excluded.morning_digest_time_min, prefs_json = excluded.prefs_json,
+        updated_at = excluded.updated_at`,
       [
         settings.displayName, settings.themeMode, settings.weekStart, toInt(settings.notificationsEnabled),
         toInt(settings.notifyLesson), settings.notifyLessonBeforeMin, toInt(settings.notifyDeadline),
@@ -137,7 +141,9 @@ export class SettingsRepo {
         settings.cyclesBeforeLongBreak, settings.dailyGoalMin, settings.studyWindowStartMin,
         settings.studyWindowEndMin, settings.breakBetweenTasksMin, settings.planningHorizonDays,
         toInt(settings.onboardingDone), toInt(settings.morningDigestEnabled ?? true),
-        settings.morningDigestTimeMin ?? DEFAULT_SETTINGS.morningDigestTimeMin, settings.createdAt, settings.updatedAt,
+        settings.morningDigestTimeMin ?? DEFAULT_SETTINGS.morningDigestTimeMin,
+        JSON.stringify(parsePrefs(settings)),
+        settings.createdAt, settings.updatedAt,
       ]
     );
   }

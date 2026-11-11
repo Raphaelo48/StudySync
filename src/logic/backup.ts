@@ -44,6 +44,7 @@
  *   заменяются на null с предупреждением в отчёте.
  */
 import { z } from 'zod';
+import { parsePrefs } from './prefs';
 import { newId } from '../core/id';
 import type { AppDatabase } from '../db/database';
 import { toInt } from '../db/mappers';
@@ -222,6 +223,17 @@ const settingsSchema = z.object({
   onboardingDone: z.boolean().optional(),
   morningDigestEnabled: z.boolean().optional(),
   morningDigestTimeMin: z.number().int().min(0).max(1439).optional(),
+  // Персонализация и расписание КГЭУ: проверяются по полям в logic/prefs при восстановлении.
+  accentColor: z.unknown().optional(),
+  fontScale: z.unknown().optional(),
+  startTab: z.unknown().optional(),
+  homeHiddenBlocks: z.unknown().optional(),
+  compactSchedule: z.unknown().optional(),
+  autoSyncGroup: z.unknown().optional(),
+  kgeuGroupId: z.unknown().optional(),
+  kgeuGroupName: z.unknown().optional(),
+  kgeuLastSyncAt: z.unknown().optional(),
+  kgeuRecent: z.unknown().optional(),
   createdAt: tsSchema.optional(),
   updatedAt: tsSchema.optional(),
 });
@@ -729,6 +741,7 @@ export async function importBackup(
       await db.settings.replace({
         ...DEFAULT_SETTINGS,
         ...backup.data.settings,
+        ...parsePrefs(backup.data.settings),
         createdAt: backup.data.settings.createdAt ?? now,
         updatedAt: now,
       });

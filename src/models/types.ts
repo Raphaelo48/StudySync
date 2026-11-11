@@ -14,6 +14,20 @@ export type TaskPriority = 1 | 2 | 3; // 1 — низкий, 2 — средни�
 export type TaskDifficulty = 1 | 2 | 3; // 1 — легко, 2 — средне, 3 — сложно
 export type EventKind = 'lesson' | 'personal' | 'study';
 export type ThemeMode = 'light' | 'dark' | 'system';
+/** Цвет акцента интерфейса (см. ACCENTS в theme/tokens). */
+export type AccentId = 'violet' | 'blue' | 'teal' | 'green' | 'orange' | 'pink';
+export type FontScale = 'small' | 'normal' | 'large';
+/** Вкладка, которая открывается при запуске. */
+export type StartTab = 'index' | 'schedule' | 'tasks';
+/** Отключаемые блоки главного экрана. */
+export type HomeBlock = 'stats' | 'dayload' | 'lessons' | 'debts' | 'priority' | 'deadlines';
+/** Что искать в расписании КГЭУ. */
+export type KgeuTargetKind = 'group' | 'teacher' | 'aud';
+export interface KgeuRecent {
+  kind: KgeuTargetKind;
+  id: number;
+  name: string;
+}
 export type SessionMode = 'pomodoro' | 'stopwatch';
 export type GoalMetric = 'study_minutes' | 'completed_tasks';
 export type GoalPeriod = 'week' | 'month' | 'semester';
@@ -236,6 +250,23 @@ export interface UserSettings {
   morningDigestEnabled: boolean;
   /** Время сводки, минуты от полуночи. */
   morningDigestTimeMin: number;
+  /* ---- Персонализация (хранится в user_settings.prefs_json) ---- */
+  accentColor: AccentId;
+  fontScale: FontScale;
+  startTab: StartTab;
+  homeHiddenBlocks: HomeBlock[];
+  /** Компактные карточки пар в расписании. */
+  compactSchedule: boolean;
+  /* ---- Расписание КГЭУ ---- */
+  /** Тихо обновлять расписание своей группы при открытии приложения. */
+  autoSyncGroup: boolean;
+  /** Своя группа: запоминается при импорте расписания. */
+  kgeuGroupId: number | null;
+  kgeuGroupName: string | null;
+  /** Когда расписание группы последний раз успешно обновлялось. */
+  kgeuLastSyncAt: Timestamp | null;
+  /** Недавние запросы поиска расписания (новые — первыми). */
+  kgeuRecent: KgeuRecent[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -317,6 +348,16 @@ export const DEFAULT_SETTINGS: UserSettings = {
   onboardingDone: false,
   morningDigestEnabled: true,
   morningDigestTimeMin: 7 * 60 + 30,
+  accentColor: 'violet',
+  fontScale: 'normal',
+  startTab: 'index',
+  homeHiddenBlocks: [],
+  compactSchedule: false,
+  autoSyncGroup: true,
+  kgeuGroupId: null,
+  kgeuGroupName: null,
+  kgeuLastSyncAt: null,
+  kgeuRecent: [],
   createdAt: 0,
   updatedAt: 0,
 };

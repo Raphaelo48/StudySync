@@ -69,7 +69,12 @@ export function EventCard({ event, hasConflict = false, onPress, testID, compact
         <Text numberOfLines={2} style={{ color: colors.text, fontSize: fontSizes.md, fontWeight: '600' }}>
           {event.title}
         </Text>
-        {isLesson ? (
+        {isLesson && compact ? (
+          // Компактный вид: одна строка «вид · аудитория · преподаватель».
+          <Text testID={testID ? `${testID}-compact-meta` : undefined} style={{ color: colors.textSecondary, fontSize: fontSizes.sm }} numberOfLines={1}>
+            {[shortKind(info.kindLabel), info.location, info.teacher, info.isReplacement ? 'замена' : null].filter(Boolean).join(' · ')}
+          </Text>
+        ) : isLesson ? (
           // Занятие: под названием — аудитория и преподаватель, без повтора названия.
           info.location || info.teacher ? (
             <View style={[styles.metaRow, styles.lessonMeta]}>
@@ -101,7 +106,7 @@ export function EventCard({ event, hasConflict = false, onPress, testID, compact
             </Text>
           </View>
         )}
-        {isLesson && (info.subjectName || event.seriesId) ? (
+        {isLesson && !compact && (info.subjectName || event.seriesId) ? (
           <Text style={{ color: colors.textMuted, fontSize: fontSizes.xs + 1 }} numberOfLines={1}>
             {[info.subjectName, event.seriesId ? 'повторяется' : null].filter(Boolean).join(' · ')}
           </Text>
@@ -112,7 +117,7 @@ export function EventCard({ event, hasConflict = false, onPress, testID, compact
             <Text style={{ color: colors.danger, fontSize: fontSizes.sm }}>Пересечение с другим событием</Text>
           </View>
         ) : null}
-        {info.kindLabel || info.isReplacement ? (
+        {!(isLesson && compact) && (info.kindLabel || info.isReplacement) ? (
           <View style={styles.metaRow}>
             {info.kindLabel ? <Badge label={info.kindLabel} color={accent} /> : null}
             {info.isReplacement ? <Badge label="замена" color={colors.warning} icon="swap-horizontal" /> : null}
@@ -135,6 +140,22 @@ export function EventCard({ event, hasConflict = false, onPress, testID, compact
       ) : null}
     </Pressable>
   );
+}
+
+/** «Практическое занятие» → «практика» — для однострочного компактного вида. */
+export function shortKind(label: string | null | undefined): string | null {
+  if (!label) return null;
+  const map: Record<string, string> = {
+    Лекция: 'лекция',
+    'Практическое занятие': 'практика',
+    'Лабораторная работа': 'лаб.',
+    Семинар: 'семинар',
+    Консультация: 'конс.',
+    Экзамен: 'экзамен',
+    Зачёт: 'зачёт',
+    'Курсовое проектирование': 'курсовое',
+  };
+  return map[label] ?? label.toLowerCase();
 }
 
 const styles = StyleSheet.create({

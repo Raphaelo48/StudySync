@@ -14,6 +14,7 @@ import { getNotificationClient } from '../src/notifications/client';
 import { validateSettingsPatch } from '../src/logic/validation';
 import { resyncAllNotifications } from '../src/notifications/scheduler';
 import { useDatabase } from '../src/state/AppContexts';
+import { formatDateShort, formatTime } from '../src/core/time';
 
 export default function SettingsScreen() {
   const { colors, fontSizes, spacing } = useTheme();
@@ -159,6 +160,23 @@ export default function SettingsScreen() {
         </Card>
 
         {/* Сессии */}
+        <SectionTitle title="Расписание КГЭУ" />
+        <Card>
+          <SwitchRow
+            testID="settings-autosync"
+            label="Обновлять расписание группы при запуске"
+            description={
+              settings.kgeuGroupId != null
+                ? `Группа ${settings.kgeuGroupName ?? ''}: не чаще раза в 6 часов${
+                    settings.kgeuLastSyncAt ? `, последнее обновление ${formatDateShort(settings.kgeuLastSyncAt)} в ${formatTime(settings.kgeuLastSyncAt)}` : ''
+                  }`
+                : 'Заработает после импорта расписания своей группы'
+            }
+            value={settings.autoSyncGroup}
+            onValueChange={(v) => void update({ autoSyncGroup: v })}
+          />
+        </Card>
+
         <SectionTitle title="Учебные сессии" />
         <Card>
           <NumberStepper

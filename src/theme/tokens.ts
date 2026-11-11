@@ -4,6 +4,8 @@
  * спокойные семантические цвета.
  */
 
+import type { AccentId, FontScale } from '../models/types';
+
 export interface ThemeColors {
   bg: string;
   surface: string;
@@ -103,6 +105,46 @@ export const radii = {
   full: 999,
 } as const;
 
+/* ---------------------------------- Акцент ---------------------------------- */
+
+
+export interface AccentDef {
+  id: AccentId;
+  label: string;
+  light: { primary: string; pressed: string };
+  dark: { primary: string; pressed: string };
+}
+
+/** Палитра акцентов: в тёмной теме — светлее, чтобы сохранить контраст с фоном. */
+export const ACCENTS: AccentDef[] = [
+  { id: 'violet', label: 'Фиолетовый', light: { primary: '#6C5CE7', pressed: '#5A4BD1' }, dark: { primary: '#8B7CF8', pressed: '#7A68F0' } },
+  { id: 'blue', label: 'Синий', light: { primary: '#2563EB', pressed: '#1D4FC4' }, dark: { primary: '#5B93F5', pressed: '#447FE8' } },
+  { id: 'teal', label: 'Бирюзовый', light: { primary: '#0E8A83', pressed: '#0B716B' }, dark: { primary: '#2EC4B6', pressed: '#22ADA0' } },
+  { id: 'green', label: 'Зелёный', light: { primary: '#2F8F3E', pressed: '#277733' }, dark: { primary: '#5CC86B', pressed: '#49B358' } },
+  { id: 'orange', label: 'Оранжевый', light: { primary: '#D2610F', pressed: '#B3520C' }, dark: { primary: '#F2924A', pressed: '#E57F33' } },
+  { id: 'pink', label: 'Розовый', light: { primary: '#D6336C', pressed: '#B82A5C' }, dark: { primary: '#F06A98', pressed: '#E25486' } },
+];
+
+export function getAccent(id: AccentId | null | undefined): AccentDef {
+  return ACCENTS.find((a) => a.id === id) ?? ACCENTS[0]!;
+}
+
+/** '#RRGGBB' + прозрачность → 'rgba(r, g, b, a)'. */
+export function hexToRgba(hex: string, alpha: number): string {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!m) return hex;
+  return `rgba(${parseInt(m[1]!, 16)}, ${parseInt(m[2]!, 16)}, ${parseInt(m[3]!, 16)}, ${alpha})`;
+}
+
+export function applyAccent(base: ThemeColors, accent: AccentDef, isDark: boolean): ThemeColors {
+  const a = isDark ? accent.dark : accent.light;
+  return { ...base, primary: a.primary, primaryPressed: a.pressed, primarySoft: hexToRgba(a.primary, isDark ? 0.15 : 0.1) };
+}
+
+/* ---------------------------------- Типографика ---------------------------------- */
+
+export const FONT_SCALES: Record<FontScale, number> = { small: 0.9, normal: 1, large: 1.15 };
+
 export const fontSizes = {
   xs: 11,
   sm: 13,
@@ -121,22 +163,34 @@ export const fontWeights = {
   bold: '700' as const,
 };
 
+export type FontSizes = { -readonly [K in keyof typeof fontSizes]: number };
+
 export interface Theme {
   colors: ThemeColors;
   isDark: boolean;
   spacing: typeof spacing;
   radii: typeof radii;
-  fontSizes: typeof fontSizes;
+  fontSizes: FontSizes;
   fontWeights: typeof fontWeights;
 }
 
-export function buildTheme(isDark: boolean): Theme {
+export function scaleFontSizes(scale: FontScale | null | undefined): FontSizes {
+  const k = FONT_SCALES[scale ?? 'normal'] ?? 1;
+  const out = {} as FontSizes;
+  for (const key of Object.keys(fontSizes) as Array<keyof typeof fontSizes>) {
+    out[key] = Math.round(fontSizes[key] * k);
+  }
+  return out;
+}
+
+export function buildTheme(isDark: boolean, accent: AccentId = 'violet', fontScale: FontScale = 'normal'): Theme {
+  const base = isDark ? darkColors : lightColors;
   return {
-    colors: isDark ? darkColors : lightColors,
+    colors: accent === 'violet' ? base : applyAccent(base, getAccent(accent), isDark),
     isDark,
     spacing,
     radii,
-    fontSizes,
+    fontSizes: fontScale === 'normal' ? fontSizes : scaleFontSizes(fontScale),
     fontWeights,
   };
 }

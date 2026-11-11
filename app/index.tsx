@@ -1,5 +1,6 @@
 /**
- * Точка входа: первый запуск → экран приветствия, иначе → основные разделы.
+ * Точка входа: первый запуск → экран приветствия, иначе → стартовая вкладка
+ * (по умолчанию «Главная», выбирается в разделе «Оформление»).
  */
 import React from 'react';
 import { Redirect } from 'expo-router';
@@ -19,5 +20,8 @@ export default function Index() {
   if (!settings.onboardingDone) {
     return <Redirect href="/welcome" />;
   }
+  // Стартовая вкладка из настроек «Оформление».
+  if (settings.startTab === 'schedule') return <Redirect href="/(tabs)/schedule" />;
+  if (settings.startTab === 'tasks') return <Redirect href="/(tabs)/tasks" />;
   return <Redirect href="/(tabs)" />;
 }

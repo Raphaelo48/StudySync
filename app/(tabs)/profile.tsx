@@ -176,9 +176,16 @@ export default function ProfileScreen() {
             { value: 'system', label: 'Системная', icon: 'contrast-outline' },
           ]}
         />
-        <Text style={{ color: colors.textMuted, fontSize: fontSizes.xs + 1, marginTop: spacing.sm }}>
-          Выбор сохраняется и применяется сразу
-        </Text>
+      </Card>
+      <Card style={{ marginTop: spacing.sm }}>
+        <MenuRow
+          icon="color-palette-outline"
+          label="Персонализация"
+          hint="цвет, шрифт, главная"
+          onPress={() => router.push('/appearance')}
+          testID="menu-appearance"
+          last
+        />
       </Card>
 
       {/* Разделы */}
@@ -189,6 +196,7 @@ export default function ProfileScreen() {
         <MenuRow icon="document-text-outline" label="Конспекты" hint="фото и заметки к парам" onPress={() => router.push('/notes')} testID="menu-notes" />
         <MenuRow icon="alert-circle-outline" label="Долги и отработки" hint={debtCount > 0 ? `${debtCount} ${pluralRu(debtCount, 'долг', 'долга', 'долгов')}` : 'нет'} onPress={() => router.push('/debts')} testID="menu-debts" />
         <MenuRow icon="cloud-download-outline" label="Расписание КГЭУ" hint="импорт и синхронизация" onPress={() => router.push('/university')} testID="menu-university" />
+        <MenuRow icon="search-outline" label="Поиск расписания" hint="препод., аудитория" onPress={() => router.push('/schedule-search')} testID="menu-schedule-search" />
         <MenuRow icon="notifications-outline" label="Уведомления и напоминания" hint={settings.notificationsEnabled ? 'включены' : 'отключены'} onPress={() => router.push('/settings')} testID="menu-settings" />
         <MenuRow icon="timer-outline" label="Сессии, перерывы, учебное окно" hint={`${settings.defaultWorkMin}/${settings.defaultBreakMin} мин`} onPress={() => router.push('/settings')} last />
       </Card>
