@@ -10,12 +10,14 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../src/components/ui/Screen';
 import { Button, Card, SectionTitle } from '../../src/components/ui/primitives';
-import { SegmentedControl, TextField } from '../../src/components/ui/inputs';
+import { TextField } from '../../src/components/ui/inputs';
+import { getAccent } from '../../src/theme/tokens';
 import { BottomSheet } from '../../src/components/ui/overlays';
 import { useDataVersion, useDatabase, useSettings, useTheme, useToast } from '../../src/state/AppContexts';
 import type { ThemeMode } from '../../src/models/types';
-import { pluralRu } from '../../src/core/time';
 import { validateSettingsPatch } from '../../src/logic/validation';
+
+const THEME_LABELS: Record<ThemeMode, string> = { light: 'светлая', dark: 'тёмная', system: 'системная' };
 
 interface ProfileTotals {
   subjects: number;
@@ -163,43 +165,36 @@ export default function ProfileScreen() {
         ) : null}
       </Card>
 
-      {/* Тема */}
+      {/* Оформление: одна строка, все настройки — на отдельном экране */}
       <SectionTitle title="Оформление" />
-      <Card>
-        <SegmentedControl<ThemeMode>
-          testID="profile-theme"
-          value={settings.themeMode}
-          onChange={(v) => void update({ themeMode: v })}
-          options={[
-            { value: 'light', label: 'Светлая', icon: 'sunny-outline' },
-            { value: 'dark', label: 'Тёмная', icon: 'moon-outline' },
-            { value: 'system', label: 'Системная', icon: 'contrast-outline' },
-          ]}
-        />
-      </Card>
-      <Card style={{ marginTop: spacing.sm }}>
+      <Card padded={false}>
         <MenuRow
           icon="color-palette-outline"
           label="Персонализация"
-          hint="цвет, шрифт, главная"
+          hint={`${THEME_LABELS[settings.themeMode]} · ${getAccent(settings.accentColor).label.toLowerCase()}`}
           onPress={() => router.push('/appearance')}
           testID="menu-appearance"
           last
         />
       </Card>
 
-      {/* Разделы */}
+      {/* Разделы: компактная сетка плиток вместо длинного списка */}
       <SectionTitle title="Учёба" />
-      <Card padded={false}>
-        <MenuRow icon="school-outline" label="Предметы" hint={totals ? `${totals.subjects} ${pluralRu(totals.subjects, 'предмет', 'предмета', 'предметов')}` : ''} onPress={() => router.push('/subjects')} testID="menu-subjects" />
-        <MenuRow icon="flag-outline" label="Цели" hint="неделя, месяц, семестр" onPress={() => router.push('/goals')} testID="menu-goals" />
-        <MenuRow icon="document-text-outline" label="Конспекты" hint="фото и заметки к парам" onPress={() => router.push('/notes')} testID="menu-notes" />
-        <MenuRow icon="alert-circle-outline" label="Долги и отработки" hint={debtCount > 0 ? `${debtCount} ${pluralRu(debtCount, 'долг', 'долга', 'долгов')}` : 'нет'} onPress={() => router.push('/debts')} testID="menu-debts" />
-        <MenuRow icon="cloud-download-outline" label="Расписание КГЭУ" hint="импорт и синхронизация" onPress={() => router.push('/university')} testID="menu-university" />
-        <MenuRow icon="search-outline" label="Поиск расписания" hint="препод., аудитория" onPress={() => router.push('/schedule-search')} testID="menu-schedule-search" />
-        <MenuRow icon="notifications-outline" label="Уведомления и напоминания" hint={settings.notificationsEnabled ? 'включены' : 'отключены'} onPress={() => router.push('/settings')} testID="menu-settings" />
-        <MenuRow icon="timer-outline" label="Сессии, перерывы, учебное окно" hint={`${settings.defaultWorkMin}/${settings.defaultBreakMin} мин`} onPress={() => router.push('/settings')} last />
-      </Card>
+      <View style={styles.tileGrid}>
+        <MenuTile icon="school-outline" label="Предметы" badge={totals ? String(totals.subjects) : undefined} onPress={() => router.push('/subjects')} testID="menu-subjects" />
+        <MenuTile icon="flag-outline" label="Цели" onPress={() => router.push('/goals')} testID="menu-goals" />
+        <MenuTile icon="document-text-outline" label="Конспекты" onPress={() => router.push('/notes')} testID="menu-notes" />
+        <MenuTile icon="alert-circle-outline" label="Долги" badge={debtCount > 0 ? String(debtCount) : undefined} badgeDanger onPress={() => router.push('/debts')} testID="menu-debts" />
+        <MenuTile icon="cloud-download-outline" label="Расписание КГЭУ" onPress={() => router.push('/university')} testID="menu-university" />
+        <MenuTile icon="search-outline" label="Поиск расписания" onPress={() => router.push('/schedule-search')} testID="menu-schedule-search" />
+        <MenuTile
+          icon={settings.notificationsEnabled ? 'notifications-outline' : 'notifications-off-outline'}
+          label="Уведомления"
+          onPress={() => router.push('/settings')}
+          testID="menu-settings"
+        />
+        <MenuTile icon="timer-outline" label="Сессии" badge={`${settings.defaultWorkMin}/${settings.defaultBreakMin}`} onPress={() => router.push('/settings')} testID="menu-sessions" />
+      </View>
 
       <SectionTitle title="Данные" />
       <Card padded={false}>
@@ -248,6 +243,47 @@ export default function ProfileScreen() {
   }
 }
 
+/** Плитка раздела: значок, подпись и необязательный счётчик. Три в ряд. */
+function MenuTile({
+  icon,
+  label,
+  badge,
+  badgeDanger = false,
+  onPress,
+  testID,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  badge?: string;
+  badgeDanger?: boolean;
+  onPress: () => void;
+  testID?: string;
+}) {
+  const { colors, fontSizes, radii } = useTheme();
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={badge ? `${label}, ${badge}` : label}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.tile,
+        { backgroundColor: colors.surface, borderColor: colors.borderSoft, borderRadius: radii.lg, opacity: pressed ? 0.75 : 1 },
+      ]}
+    >
+      <Ionicons name={icon} size={22} color={colors.primary} />
+      <Text style={{ color: colors.text, fontSize: fontSizes.xs + 1, fontWeight: '500', textAlign: 'center' }} numberOfLines={2}>
+        {label}
+      </Text>
+      {badge ? (
+        <View style={[styles.tileBadge, { backgroundColor: badgeDanger ? colors.danger : colors.primarySoft }]}>
+          <Text style={{ color: badgeDanger ? '#FFFFFF' : colors.primary, fontSize: fontSizes.xs, fontWeight: '700' }}>{badge}</Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
+
 function MenuRow({
   icon,
   label,
@@ -292,6 +328,20 @@ function MenuRow({
 }
 
 const styles = StyleSheet.create({
+  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tile: {
+    // три плитки в ряд с промежутком 8
+    width: '31.6%',
+    flexGrow: 1,
+    minHeight: 76,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  tileBadge: { position: 'absolute', top: 6, right: 8, minWidth: 18, paddingHorizontal: 5, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   userRow: {
     flexDirection: 'row',
     alignItems: 'center',

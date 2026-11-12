@@ -1,6 +1,6 @@
 /**
- * Оформление и персонализация: тема, цвет акцента, размер шрифта,
- * стартовая вкладка, блоки главного экрана, компактное расписание.
+ * Персонализация на одном экране: тема, цвет акцента, размер текста,
+ * вид карточек пар с живым примером, стартовая вкладка, блоки главной.
  * Всё применяется сразу и сохраняется в настройках.
  */
 import React from 'react';
@@ -8,21 +8,21 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../src/components/ui/Screen';
 import { ScreenHeader } from '../src/components/ScreenHeader';
-import { Card, SectionTitle } from '../src/components/ui/primitives';
+import { Button, Card, Chip } from '../src/components/ui/primitives';
 import { SegmentedControl, SwitchRow } from '../src/components/ui/inputs';
 import { EventCard } from '../src/components/schedule/EventCard';
 import { useResolvedColorScheme, useSettings, useTheme } from '../src/state/AppContexts';
 import { ACCENTS } from '../src/theme/tokens';
 import { HOME_BLOCKS, toggleHomeBlock } from '../src/logic/prefs';
-import type { EventWithRelations, FontScale, HomeBlock, StartTab, ThemeMode } from '../src/models/types';
+import { DEFAULT_SETTINGS, type EventWithRelations, type FontScale, type HomeBlock, type StartTab, type ThemeMode } from '../src/models/types';
 
-const BLOCK_LABELS: Record<HomeBlock, { label: string; description: string }> = {
-  stats: { label: 'Статистика дня', description: 'выполнено, фокус, запланировано' },
-  dayload: { label: 'Загруженность дня', description: 'шкала нагрузки и перепланирование' },
-  lessons: { label: 'Ближайшие занятия', description: 'пары на сегодня и завтра' },
-  debts: { label: 'Долги и отработки', description: 'два ближайших долга' },
-  priority: { label: 'Высокий приоритет', description: 'важные задачи' },
-  deadlines: { label: 'Ближайшие дедлайны', description: 'сроки задач на неделю' },
+const BLOCK_LABELS: Record<HomeBlock, string> = {
+  stats: 'Статистика дня',
+  dayload: 'Загруженность',
+  lessons: 'Ближайшие пары',
+  debts: 'Долги',
+  priority: 'Высокий приоритет',
+  deadlines: 'Дедлайны',
 };
 
 /** Пример пары для предпросмотра вида карточек. */
@@ -56,13 +56,24 @@ export default function AppearanceScreen() {
   const scheme = useResolvedColorScheme();
   const { settings, update } = useSettings();
   const hidden = settings.homeHiddenBlocks;
+  const isCustomized =
+    settings.themeMode !== DEFAULT_SETTINGS.themeMode ||
+    settings.accentColor !== DEFAULT_SETTINGS.accentColor ||
+    settings.fontScale !== DEFAULT_SETTINGS.fontScale ||
+    settings.compactSchedule !== DEFAULT_SETTINGS.compactSchedule ||
+    settings.startTab !== DEFAULT_SETTINGS.startTab ||
+    hidden.length > 0;
+
+  const accentLabel = ACCENTS.find((a) => a.id === settings.accentColor)?.label ?? '';
+  const rowLabel = { color: colors.textSecondary, fontSize: fontSizes.sm, fontWeight: '600' as const, marginBottom: 6 };
 
   return (
     <Screen testID="appearance-screen">
-      <ScreenHeader title="Оформление" testID="appearance-header" />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 48 }}>
-        <SectionTitle title="Тема" />
+      <ScreenHeader title="Персонализация" testID="appearance-header" />
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 48, gap: spacing.md }}>
+        {/* Вид: тема, акцент, размер текста — одной карточкой */}
         <Card>
+          <Text style={rowLabel}>Тема</Text>
           <SegmentedControl<ThemeMode>
             testID="appearance-theme"
             value={settings.themeMode}
@@ -70,13 +81,13 @@ export default function AppearanceScreen() {
             options={[
               { value: 'light', label: 'Светлая', icon: 'sunny-outline' },
               { value: 'dark', label: 'Тёмная', icon: 'moon-outline' },
-              { value: 'system', label: 'Системная', icon: 'contrast-outline' },
+              { value: 'system', label: 'Авто', icon: 'contrast-outline' },
             ]}
           />
-        </Card>
 
-        <SectionTitle title="Цвет акцента" />
-        <Card>
+          <Text style={[rowLabel, { marginTop: spacing.md }]}>
+            Цвет акцента: <Text style={{ color: colors.primary }}>{accentLabel.toLowerCase()}</Text>
+          </Text>
           <View style={styles.swatches}>
             {ACCENTS.map((a) => {
               const selected = settings.accentColor === a.id;
@@ -89,27 +100,18 @@ export default function AppearanceScreen() {
                   accessibilityState={{ selected }}
                   accessibilityLabel={`Цвет акцента: ${a.label}`}
                   onPress={() => void update({ accentColor: a.id })}
-                  style={styles.swatchWrap}
+                  hitSlop={4}
+                  style={[styles.swatchRing, { borderColor: selected ? color : 'transparent' }]}
                 >
-                  <View
-                    style={[
-                      styles.swatch,
-                      { backgroundColor: color, borderColor: selected ? colors.text : 'transparent' },
-                    ]}
-                  >
-                    {selected ? <Ionicons name="checkmark" size={20} color="#FFFFFF" /> : null}
+                  <View style={[styles.swatch, { backgroundColor: color }]}>
+                    {selected ? <Ionicons name="checkmark" size={16} color="#FFFFFF" /> : null}
                   </View>
-                  <Text style={{ color: selected ? colors.text : colors.textMuted, fontSize: fontSizes.xs, marginTop: 4 }} numberOfLines={1}>
-                    {a.label}
-                  </Text>
                 </Pressable>
               );
             })}
           </View>
-        </Card>
 
-        <SectionTitle title="Размер текста" />
-        <Card>
+          <Text style={[rowLabel, { marginTop: spacing.md }]}>Размер текста</Text>
           <SegmentedControl<FontScale>
             testID="appearance-font"
             value={settings.fontScale}
@@ -120,26 +122,23 @@ export default function AppearanceScreen() {
               { value: 'large', label: 'Крупнее' },
             ]}
           />
-          <Text style={{ color: colors.textSecondary, fontSize: fontSizes.md, marginTop: spacing.md }}>
-            Так выглядит основной текст приложения.
-          </Text>
         </Card>
 
-        <SectionTitle title="Расписание" />
+        {/* Живой пример: сразу видно акцент, размер текста и вид карточки */}
+        <View>
+          <Text style={{ color: colors.textMuted, fontSize: fontSizes.xs + 1, marginBottom: 6 }}>Так будет выглядеть пара в расписании</Text>
+          <EventCard event={sampleLesson()} compact={settings.compactSchedule} testID="appearance-preview" />
+        </View>
+
         <Card>
           <SwitchRow
             testID="appearance-compact"
             label="Компактные карточки пар"
-            description="Вид, аудитория и преподаватель в одну строку — больше пар на экране"
+            description="Вид, аудитория и преподаватель в одну строку"
             value={settings.compactSchedule}
             onValueChange={(v) => void update({ compactSchedule: v })}
           />
-          <Text style={{ color: colors.textMuted, fontSize: fontSizes.xs + 1, marginBottom: spacing.sm }}>Предпросмотр</Text>
-          <EventCard event={sampleLesson()} compact={settings.compactSchedule} testID="appearance-preview" />
-        </Card>
-
-        <SectionTitle title="При запуске открывать" />
-        <Card>
+          <Text style={[rowLabel, { marginTop: spacing.sm }]}>При запуске открывать</Text>
           <SegmentedControl<StartTab>
             testID="appearance-start-tab"
             value={settings.startTab}
@@ -152,44 +151,50 @@ export default function AppearanceScreen() {
           />
         </Card>
 
-        <SectionTitle title="Блоки на главной" />
         <Card>
-          {HOME_BLOCKS.map((b) => (
-            <SwitchRow
-              key={b}
-              testID={`home-block-${b}`}
-              label={BLOCK_LABELS[b].label}
-              description={BLOCK_LABELS[b].description}
-              value={!hidden.includes(b)}
-              onValueChange={(v) => void update({ homeHiddenBlocks: toggleHomeBlock(hidden, b, v) })}
-            />
-          ))}
-          <Text style={{ color: colors.textMuted, fontSize: fontSizes.xs + 1, marginTop: spacing.xs }}>
-            Задачи на сегодня и просроченные показываются всегда.
+          <Text style={rowLabel}>Блоки на главной</Text>
+          <View style={styles.chips}>
+            {HOME_BLOCKS.map((b) => (
+              <Chip
+                key={b}
+                testID={`home-block-${b}`}
+                label={BLOCK_LABELS[b]}
+                selected={!hidden.includes(b)}
+                onPress={() => void update({ homeHiddenBlocks: toggleHomeBlock(hidden, b, hidden.includes(b)) })}
+              />
+            ))}
+          </View>
+          <Text style={{ color: colors.textMuted, fontSize: fontSizes.xs + 1, marginTop: spacing.sm }}>
+            Нажмите, чтобы скрыть или показать. Задачи на сегодня и просроченные видны всегда.
           </Text>
         </Card>
+
+        {isCustomized ? (
+          <Button
+            testID="appearance-reset"
+            title="Сбросить оформление"
+            variant="ghost"
+            icon="refresh"
+            onPress={() =>
+              void update({
+                themeMode: DEFAULT_SETTINGS.themeMode,
+                accentColor: DEFAULT_SETTINGS.accentColor,
+                fontScale: DEFAULT_SETTINGS.fontScale,
+                compactSchedule: DEFAULT_SETTINGS.compactSchedule,
+                startTab: DEFAULT_SETTINGS.startTab,
+                homeHiddenBlocks: [],
+              })
+            }
+          />
+        ) : null}
       </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  swatches: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: 12,
-  },
-  swatchWrap: {
-    width: '30%',
-    alignItems: 'center',
-  },
-  swatch: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  swatches: { flexDirection: 'row', justifyContent: 'space-between' },
+  swatchRing: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  swatch: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 });

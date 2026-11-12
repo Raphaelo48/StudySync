@@ -1,24 +1,23 @@
 /**
  * Поиск расписания КГЭУ: группа, преподаватель, аудитория — по публичным
- * справочникам личного кабинета; предмет — по своему расписанию в приложении.
+ * справочникам личного кабинета. Результат открывается в виде месяца.
  * Пустой запрос показывает недавние поиски.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../src/components/ui/Screen';
 import { ScreenHeader } from '../src/components/ScreenHeader';
 import { Button, Card, EmptyState, SectionTitle, Spinner } from '../src/components/ui/primitives';
 import { SegmentedControl } from '../src/components/ui/inputs';
-import { useDatabase, useSettings, useTheme } from '../src/state/AppContexts';
+import { useSettings, useTheme } from '../src/state/AppContexts';
 import { fetchAuditoriums, fetchGroups, fetchTeachers, KgeuError } from '../src/logic/kgeuClient';
-import { searchLocalSubjects, searchNamed, type LocalSubjectHit } from '../src/logic/kgeuSearch';
-import { DAY_MS, formatDateWithWeekday, formatTime, pluralRu } from '../src/core/time';
-import type { CalendarEvent, KgeuRecent, KgeuTargetKind } from '../src/models/types';
+import { searchNamed } from '../src/logic/kgeuSearch';
+import type { KgeuRecent, KgeuTargetKind } from '../src/models/types';
 import { logger } from '../src/core/logger';
 
-type SearchMode = KgeuTargetKind | 'subject';
+type SearchMode = KgeuTargetKind;
 
 interface Item {
   id: number;
@@ -52,7 +51,6 @@ const PLACEHOLDERS: Record<SearchMode, string> = {
   group: 'Группа, например ПИ-1-23',
   teacher: 'Фамилия преподавателя',
   aud: 'Аудитория, например Б-301',
-  subject: 'Название предмета',
 };
 
 const KIND_ICONS: Record<KgeuTargetKind, keyof typeof Ionicons.glyphMap> = {
@@ -67,7 +65,6 @@ function openTarget(kind: KgeuTargetKind, id: number, name: string) {
 
 export default function ScheduleSearchScreen() {
   const { colors, fontSizes, spacing, radii } = useTheme();
-  const db = useDatabase();
   const { settings } = useSettings();
 
   const [mode, setMode] = useState<SearchMode>('group');
@@ -75,7 +72,6 @@ export default function ScheduleSearchScreen() {
   const [list, setList] = useState<Item[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [events, setEvents] = useState<CalendarEvent[] | null>(null);
 
   const load = useCallback(async (kind: KgeuTargetKind) => {
     setLoading(true);
@@ -92,24 +88,11 @@ export default function ScheduleSearchScreen() {
   }, []);
 
   useEffect(() => {
-    if (mode === 'subject') return;
     setList(listCache[mode] ?? null);
     void load(mode);
   }, [mode, load]);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (mode !== 'subject') return;
-      const now = Date.now();
-      void db.events.listRange(now - 200 * DAY_MS, now + 250 * DAY_MS).then(setEvents);
-    }, [db, mode])
-  );
-
   const results = useMemo(() => (list && query.trim() ? searchNamed(list, query) : []), [list, query]);
-  const subjectHits = useMemo<LocalSubjectHit[]>(
-    () => (mode === 'subject' && events ? searchLocalSubjects(events, query, Date.now()) : []),
-    [mode, events, query]
-  );
 
   const recent = settings.kgeuRecent;
 
@@ -126,9 +109,8 @@ export default function ScheduleSearchScreen() {
           }}
           options={[
             { value: 'group', label: 'Группа' },
-            { value: 'teacher', label: 'Препод.' },
-            { value: 'aud', label: 'Ауд.' },
-            { value: 'subject', label: 'Предмет' },
+            { value: 'teacher', label: 'Преподаватель' },
+            { value: 'aud', label: 'Аудитория' },
           ]}
         />
 
@@ -151,42 +133,7 @@ export default function ScheduleSearchScreen() {
           ) : null}
         </View>
 
-        {mode === 'subject' ? (
-          <>
-            <Text style={{ color: colors.textMuted, fontSize: fontSizes.xs + 1, marginTop: spacing.sm, lineHeight: 16 }}>
-              Ищет по вашему расписанию. Чтобы найти предмет у другой группы или преподавателя, откройте их
-              расписание и введите название в фильтр.
-            </Text>
-            {events == null ? (
-              <Spinner />
-            ) : subjectHits.length === 0 ? (
-              <EmptyState
-                icon="book-outline"
-                title={events.some((e) => e.kind === 'lesson') ? 'Ничего не найдено' : 'В расписании пока нет занятий'}
-                subtitle={events.some((e) => e.kind === 'lesson') ? 'Попробуйте часть названия' : 'Импортируйте расписание группы'}
-              />
-            ) : (
-              <View style={{ marginTop: spacing.md }}>
-                {subjectHits.map((h) => (
-                  <ResultRow
-                    key={h.subjectId ?? h.title}
-                    icon="book-outline"
-                    title={h.title}
-                    hint={
-                      h.nextAt
-                        ? `ближайшая: ${formatDateWithWeekday(h.nextAt)}, ${formatTime(h.nextAt)} · впереди ${h.upcoming} ${pluralRu(h.upcoming, 'занятие', 'занятия', 'занятий')}`
-                        : `занятий в расписании: ${h.total}, все прошли`
-                    }
-                    onPress={() =>
-                      router.push({ pathname: '/schedule-view', params: { kind: 'subject', name: h.title, subjectId: h.subjectId ?? '' } })
-                    }
-                    testID={`subject-hit-${h.title}`}
-                  />
-                ))}
-              </View>
-            )}
-          </>
-        ) : !query.trim() ? (
+        {!query.trim() ? (
           <>
             {mode === 'group' && settings.kgeuGroupId != null ? (
               <>
@@ -225,7 +172,7 @@ export default function ScheduleSearchScreen() {
         ) : error ? (
           <Card style={{ marginTop: spacing.lg, borderColor: colors.danger, borderWidth: 1 }}>
             <Text style={{ color: colors.danger, fontSize: fontSizes.sm, lineHeight: 19 }}>{error}</Text>
-            <Button title="Повторить" variant="secondary" style={{ marginTop: spacing.md }} onPress={() => void load(mode as KgeuTargetKind)} />
+            <Button title="Повторить" variant="secondary" style={{ marginTop: spacing.md }} onPress={() => void load(mode)} />
           </Card>
         ) : results.length === 0 ? (
           <EmptyState icon="search-outline" title="Ничего не найдено" subtitle="Проверьте написание или введите меньше букв" />
@@ -234,17 +181,17 @@ export default function ScheduleSearchScreen() {
             {results.map((it) => (
               <ResultRow
                 key={it.id}
-                icon={KIND_ICONS[mode as KgeuTargetKind]}
+                icon={KIND_ICONS[mode]}
                 title={it.name}
                 hint={it.hint}
-                onPress={() => openTarget(mode as KgeuTargetKind, it.id, it.name)}
+                onPress={() => openTarget(mode, it.id, it.name)}
                 testID={`search-result-${it.id}`}
               />
             ))}
           </View>
         )}
 
-        {error && mode !== 'subject' && !query.trim() ? (
+        {error && !query.trim() ? (
           <Card style={{ marginTop: spacing.lg, borderColor: colors.danger, borderWidth: 1 }}>
             <Text style={{ color: colors.danger, fontSize: fontSizes.sm, lineHeight: 19 }}>{error}</Text>
           </Card>

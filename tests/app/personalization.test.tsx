@@ -69,10 +69,69 @@ describe('Персонализация и поиск расписания', () =
     expect(screen.queryByTestId('search-result-14569')).toBeNull();
   });
 
-  it('поиск по предмету без расписания подсказывает импортировать группу', async () => {
+  it('в поиске нет режима «Предмет»; расписание преподавателя открывается месяцем', async () => {
+    const today = new Date();
+    today.setHours(9, 40, 0, 0);
+    const iso = (d: Date) => {
+      const p = (n: number) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:00`;
+    };
+    const end = new Date(today.getTime() + 90 * 60_000);
+    global.fetch = jest.fn(async (url: string) => ({
+      ok: true,
+      status: 200,
+      json: async () =>
+        String(url).includes('/api/Rasp?')
+          ? {
+              data: {
+                rasp: [
+                  { код: 1, датаНачала: iso(today), датаОкончания: iso(end), дисциплина: 'лек Физика', преподаватель: 'Абакумова Ю.А.', аудитория: 'Б-301', группа: 'А-1-22' },
+                ],
+              },
+              state: 1,
+            }
+          : { data: [{ id: 472, name: 'Абакумова Юлия Андреевна', kaf: null }], state: 1 },
+    })) as unknown as typeof fetch;
+
     renderRouter(APP_DIR, { initialUrl: '/schedule-search' });
     await expectScreen('schedule-search-screen');
-    fireEvent.press(screen.getByTestId('search-mode-subject'));
-    await waitFor(() => expect(screen.getByText('В расписании пока нет занятий')).toBeTruthy(), { timeout: 10000 });
+    expect(screen.queryByTestId('search-mode-subject')).toBeNull();
+
+    fireEvent.press(screen.getByTestId('search-mode-teacher'));
+    fireEvent.changeText(screen.getByTestId('search-input'), 'абакумова');
+    await waitFor(() => expect(screen.getByTestId('search-result-472')).toBeTruthy(), { timeout: 10000 });
+    fireEvent.press(screen.getByTestId('search-result-472'));
+
+    await expectScreen('schedule-view-screen');
+    await waitFor(() => expect(screen.getByTestId('view-month')).toBeTruthy(), { timeout: 10000 });
+    expect(screen.queryByTestId('schedule-view-past')).toBeNull();
+    // выбран сегодняшний день с парой: группа и аудитория в описании
+    await waitFor(() => expect(screen.getByText('Физика')).toBeTruthy(), { timeout: 10000 });
+    expect(screen.getByText('А-1-22 · Б-301')).toBeTruthy();
+
+    // следующий месяц: занятий нет, есть переход к ближайшему дню с парами
+    fireEvent.press(screen.getByTestId('view-month-next'));
+    await waitFor(() => expect(screen.getByTestId('schedule-view-empty-day')).toBeTruthy(), { timeout: 10000 });
+    expect(screen.getByTestId('schedule-view-prev-day')).toBeTruthy();
+  });
+
+  it('разделы «Учёба» — плитки; блоки главной переключаются чипами', async () => {
+    renderRouter(APP_DIR, { initialUrl: '/(tabs)/profile' });
+    await expectScreen('profile-screen');
+    for (const id of ['menu-subjects', 'menu-goals', 'menu-notes', 'menu-debts', 'menu-university', 'menu-schedule-search', 'menu-settings']) {
+      expect(screen.getByTestId(id)).toBeTruthy();
+    }
+    fireEvent.press(screen.getByTestId('menu-appearance'));
+    await expectScreen('appearance-screen');
+    expect(screen.getByTestId('home-block-debts').props.accessibilityState).toMatchObject({ selected: true });
+    fireEvent.press(screen.getByTestId('home-block-debts'));
+    await waitFor(() => expect(screen.getByTestId('home-block-debts').props.accessibilityState).toMatchObject({ selected: false }), {
+      timeout: 10000,
+    });
+    // появилась кнопка сброса, она возвращает блок
+    fireEvent.press(screen.getByTestId('appearance-reset'));
+    await waitFor(() => expect(screen.getByTestId('home-block-debts').props.accessibilityState).toMatchObject({ selected: true }), {
+      timeout: 10000,
+    });
   });
 });

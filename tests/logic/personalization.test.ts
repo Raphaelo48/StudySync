@@ -10,12 +10,12 @@ import { ACCENTS, buildTheme, darkColors, fontSizes, hexToRgba, lightColors } fr
 import { exportAll, importBackup, parseBackup, serializeBackup } from '../../src/logic/backup';
 import {
   filterBySubject,
-  fromToday,
-  groupByDay,
+  initialDay,
+  lessonsByDay,
+  nearestLessonDay,
   lessonMeta,
   matchesQuery,
   normalizeQuery,
-  searchLocalSubjects,
   searchNamed,
   toViewLessons,
   topDisciplines,
@@ -221,45 +221,29 @@ describe('Поиск расписания КГЭУ', () => {
     expect(v[2]!.groups).toBe('А-1-22, А-2-22');
   });
 
-  it('фильтры, дни и строка описания', () => {
+  it('фильтр по предмету, месячный вид и строка описания', () => {
     const v = toViewLessons(ROWS);
     expect(filterBySubject(v, 'атомн').length).toBe(2);
     expect(filterBySubject(v, '').length).toBe(4);
     expect(topDisciplines(v)[0]).toBe('Атомные электрические станции');
-    const upcoming = fromToday(v, NOW, false);
-    expect(upcoming.every((l) => l.endAt >= startOfDay(NOW))).toBe(true);
-    expect(upcoming).toHaveLength(3);
-    expect(fromToday(v, NOW, true)).toHaveLength(4);
-    const days = groupByDay(upcoming);
-    expect(days.map((d) => d.lessons.length)).toEqual([2, 1]);
+    // месячный вид: занятия по дням, стартовый день и переход к ближайшему
+    const byDay = lessonsByDay(v);
+    const d11 = startOfDay(NOW) - DAY_MS;
+    const d12 = startOfDay(NOW);
+    const d13 = startOfDay(NOW) + DAY_MS;
+    expect([...byDay.keys()].sort()).toEqual([d11, d12, d13]);
+    expect(byDay.get(d12)).toHaveLength(2);
+    expect(initialDay(v, NOW)).toBe(d12);
+    expect(initialDay(v, NOW + 5 * DAY_MS)).toBe(d13); // впереди пусто — последний день с занятиями
+    expect(initialDay(filterBySubject(v, 'атомн'), NOW)).toBe(d13); // сегодня нет — ближайший впереди
+    expect(initialDay([], NOW)).toBe(d12);
+    expect(nearestLessonDay(v, d12, 1)).toBe(d13);
+    expect(nearestLessonDay(v, d12, -1)).toBe(d11);
+    expect(nearestLessonDay(v, d13, 1)).toBeNull();
     const lab = v[1]!;
     expect(lessonMeta(lab, 'group')).toBe('А413 · Низамова А.Ш. · подгр. 2');
     expect(lessonMeta(lab, 'teacher')).toBe('А-1-22 · А413 · подгр. 2');
     expect(lessonMeta(lab, 'aud')).toBe('А-1-22 · Низамова А.Ш. · подгр. 2');
-  });
-
-  it('поиск предмета по своему расписанию', () => {
-    const ev = (title: string, d: number, subjectId: string | null = null, kind: 'lesson' | 'personal' = 'lesson') => ({
-      title,
-      kind,
-      subjectId,
-      startAt: startOfDay(NOW) + d * DAY_MS + 9 * HOUR_MS,
-      endAt: startOfDay(NOW) + d * DAY_MS + 10.5 * HOUR_MS,
-    });
-    const hits = searchLocalSubjects(
-      [
-        ev('Физика (подгр. 1)', 1, 's1'),
-        ev('Физика (подгр. 1)', -3, 's1'),
-        ev('Физика', 4, 's1'),
-        ev('Базы данных', 2, 's2'),
-        ev('Физкультура дома', 1, null, 'personal'),
-      ],
-      'физ',
-      NOW
-    );
-    expect(hits).toHaveLength(1);
-    expect(hits[0]).toMatchObject({ title: 'Физика', subjectId: 's1', total: 3, upcoming: 2 });
-    expect(searchLocalSubjects([ev('Базы данных', -1, 's2')], '', NOW)[0]!.nextAt).toBeNull();
   });
 });
 
