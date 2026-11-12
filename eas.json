@@ -23,8 +23,7 @@
         "buildType": "apk"
       },
       "env": {
-        "APP_VARIANT": "demo",
-        "FEEDBACK_CONTACT": ""
+        "APP_VARIANT": "demo"
       }
     }
   },
