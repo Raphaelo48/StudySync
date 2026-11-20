@@ -13,6 +13,7 @@ export const PREF_KEYS = [
   'startTab',
   'homeHiddenBlocks',
   'compactSchedule',
+  'language',
   'autoSyncGroup',
   'kgeuGroupId',
   'kgeuGroupName',
@@ -29,6 +30,7 @@ export const HOME_BLOCKS: HomeBlock[] = ['stats', 'dayload', 'lessons', 'debts',
 export const accentSchema = z.enum(['violet', 'blue', 'teal', 'green', 'orange', 'pink']);
 export const fontScaleSchema = z.enum(['small', 'normal', 'large']);
 export const startTabSchema = z.enum(['index', 'schedule', 'tasks']);
+export const languageSchema = z.enum(['system', 'ru', 'en']);
 export const homeBlockSchema = z.enum(['stats', 'dayload', 'lessons', 'debts', 'priority', 'deadlines']);
 export const recentSchema = z.object({
   kind: z.enum(['group', 'teacher', 'aud']),
@@ -43,6 +45,7 @@ const FIELD_SCHEMAS: { [K in PrefKey]: z.ZodType<Prefs[K]> } = {
   startTab: startTabSchema,
   homeHiddenBlocks: z.array(homeBlockSchema).max(HOME_BLOCKS.length),
   compactSchedule: z.boolean(),
+  language: languageSchema,
   autoSyncGroup: z.boolean(),
   kgeuGroupId: z.number().int().nullable(),
   kgeuGroupName: z.string().max(120).nullable(),

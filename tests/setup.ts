@@ -2,6 +2,12 @@
  * Глобальная настройка Jest: гасим шумные логи, добавляем отсутствующие API.
  */
 
+// Язык устройства в тестах фиксирован: русский, чтобы проверки текстов
+// не зависели от машины, на которой запускается CI.
+jest.mock('expo-localization', () => ({
+  getLocales: () => [{ languageCode: 'ru', languageTag: 'ru-RU', regionCode: 'RU' }],
+}));
+
 // Консоль в тестах не нужна (logger пишет только в __DEV__)
 if (typeof (globalThis as { __DEV__?: boolean }).__DEV__ === 'undefined') {
   (globalThis as { __DEV__?: boolean }).__DEV__ = false;
