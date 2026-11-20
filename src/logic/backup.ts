@@ -229,6 +229,7 @@ const settingsSchema = z.object({
   startTab: z.unknown().optional(),
   homeHiddenBlocks: z.unknown().optional(),
   compactSchedule: z.unknown().optional(),
+  language: z.unknown().optional(),
   autoSyncGroup: z.unknown().optional(),
   kgeuGroupId: z.unknown().optional(),
   kgeuGroupName: z.unknown().optional(),

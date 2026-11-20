@@ -14,6 +14,8 @@ export type TaskPriority = 1 | 2 | 3; // 1 — низкий, 2 — средни�
 export type TaskDifficulty = 1 | 2 | 3; // 1 — легко, 2 — средне, 3 — сложно
 export type EventKind = 'lesson' | 'personal' | 'study';
 export type ThemeMode = 'light' | 'dark' | 'system';
+/** Язык интерфейса: системный или принудительно выбранный. */
+export type LanguagePref = 'system' | 'ru' | 'en';
 /** Цвет акцента интерфейса (см. ACCENTS в theme/tokens). */
 export type AccentId = 'violet' | 'blue' | 'teal' | 'green' | 'orange' | 'pink';
 export type FontScale = 'small' | 'normal' | 'large';
@@ -255,6 +257,8 @@ export interface UserSettings {
   fontScale: FontScale;
   startTab: StartTab;
   homeHiddenBlocks: HomeBlock[];
+  /** Язык интерфейса (см. src/i18n). */
+  language: LanguagePref;
   /** Компактные карточки пар в расписании. */
   compactSchedule: boolean;
   /* ---- Расписание КГЭУ ---- */
@@ -352,6 +356,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   fontScale: 'normal',
   startTab: 'index',
   homeHiddenBlocks: [],
+  language: 'system',
   compactSchedule: false,
   autoSyncGroup: true,
   kgeuGroupId: null,
