@@ -18,7 +18,7 @@
       "bundleIdentifier": "app.studysync.mobile"
     },
     "android": {
-      "package": "app.studysync.mobile",
+      "package": "ru.raphaelo48.studysync",
       "adaptiveIcon": {
         "backgroundColor": "#101322",
         "foregroundImage": "./assets/android-icon-foreground.png",
