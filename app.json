@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.studysync.mobile"
+      "bundleIdentifier": "ru.raphaelo48.studysync"
     },
     "android": {
       "package": "ru.raphaelo48.studysync",
